@@ -1,0 +1,42 @@
+trigger:
+  branches:
+    include:
+      - main  # Define the branch that triggers the pipeline
+
+pool:
+  vmImage: 'ubuntu-latest'  # Choose the OS for the build agent
+
+steps:
+  - task: DockerInstaller@0
+    displayName: 'Install Docker'
+
+  # Build the Docker image
+  - task: Docker@2
+    displayName: 'Build Docker image'
+    inputs:
+      containerRegistry: 'myContainerRegistry'  # Use Azure Container Registry or Docker Hub
+      repository: 'my-app'  # Name of your Docker image
+      command: 'build'
+      Dockerfile: '**/Dockerfile'
+      tags: |
+        $(Build.BuildId)
+
+  # Push the Docker image to the container registry
+  - task: Docker@2
+    displayName: 'Push Docker image to registry'
+    inputs:
+      containerRegistry: 'myContainerRegistry'
+      repository: 'my-app'
+      command: 'push'
+      tags: |
+        $(Build.BuildId)
+
+  # Deploy the Docker image to a container service (Kubernetes or Azure App Service)
+  - task: Kubernetes@1
+    displayName: 'Deploy to AKS'
+    inputs:
+      kubernetesServiceConnection: 'myK8sCluster'
+      namespace: 'default'
+      command: 'apply'
+      useConfigurationFile: true
+      configuration: 'k8s/deployment.yml'
